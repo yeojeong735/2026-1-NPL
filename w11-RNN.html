@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RNN 자연어처리 핵심 정리</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #ebebea;
+    --text: #1a1a18; --text2: #5a5a56; --text3: #8a8a84;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.2);
+    --radius: 8px; --radius-lg: 12px;
+    --blue-bg: #E6F1FB; --blue-text: #185FA5; --blue-dark: #0C447C;
+    --green-bg: #EAF3DE; --green-text: #3B6D11; --green-dark: #27500A;
+    --red-bg: #FCEBEB; --red-text: #A32D2D; --red-dark: #791F1F;
+    --amber-bg: #FAEEDA; --amber-text: #854F0B;
+    --coral-bg: #FAECE7; --coral-text: #993C1D; --coral-dark: #712B13;
+    --teal-bg: #E1F5EE; --teal-text: #0F6E56; --teal-dark: #085041;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #262624; --bg3: #2e2e2c;
+      --text: #f0ede8; --text2: #a8a8a0; --text3: #6a6a64;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.18);
+      --blue-bg: #042C53; --blue-text: #85B7EB; --blue-dark: #B5D4F4;
+      --green-bg: #173404; --green-text: #97C459; --green-dark: #C0DD97;
+      --red-bg: #501313; --red-text: #F09595; --red-dark: #F7C1C1;
+      --amber-bg: #412402; --amber-text: #FAC775;
+      --coral-bg: #4A1B0C; --coral-text: #F0997B; --coral-dark: #F5C4B3;
+      --teal-bg: #04342C; --teal-text: #5DCAA5; --teal-dark: #9FE1CB;
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text);
+    max-width: 760px; margin: 0 auto; padding: 2rem 1.25rem 4rem;
+    font-size: 15px; line-height: 1.7;
+  }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text3); margin-bottom: 2rem; }
+  .tab-bar {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.5rem;
+    position: sticky; top: 0; background: var(--bg);
+    padding: 0.75rem 0; z-index: 10;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .tab-btn {
+    padding: 5px 13px; font-size: 13px;
+    border: 0.5px solid var(--border2); border-radius: var(--radius);
+    background: transparent; color: var(--text2); cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .tab-btn:hover { background: var(--bg2); color: var(--text); }
+  .tab-btn.active {
+    background: var(--bg3); color: var(--text);
+    border-color: var(--border2); font-weight: 500;
+  }
+  .section { display: none; }
+  .section.active { display: block; }
+  .card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 14px; font-weight: 500; color: var(--text);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: var(--radius);
+    font-weight: 500; flex-shrink: 0;
+  }
+  .badge-exam { background: var(--coral-bg); color: var(--coral-text); }
+  .badge-key { background: var(--blue-bg); color: var(--blue-text); }
+  p { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .formula {
+    font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px;
+    background: var(--bg2); padding: 7px 12px;
+    border-radius: var(--radius); color: var(--text);
+    margin: 6px 0; border-left: 3px solid #378ADD;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 500px) {
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+  .mini-card {
+    background: var(--bg2); border-radius: var(--radius);
+    padding: 10px 12px; font-size: 12px;
+  }
+  .mini-card .label {
+    color: var(--text3); margin-bottom: 4px; font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .mini-card .val { color: var(--text); line-height: 1.5; }
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 10px 0; }
+  .arrow-flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
+  .af-box {
+    font-size: 12px; padding: 4px 10px;
+    background: var(--bg2); border: 0.5px solid var(--border2);
+    border-radius: var(--radius); color: var(--text);
+  }
+  .af-arrow { font-size: 12px; color: var(--text3); }
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .compare-col { border-radius: var(--radius); padding: 10px 12px; }
+  .col-lstm { background: var(--blue-bg); border: 0.5px solid rgba(55,138,221,0.25); }
+  .col-gru  { background: var(--green-bg); border: 0.5px solid rgba(99,153,34,0.25); }
+  .col-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .col-lstm .col-title { color: var(--blue-dark); }
+  .col-gru  .col-title { color: var(--green-dark); }
+  .col-item { font-size: 12px; margin-bottom: 3px; }
+  .col-lstm .col-item { color: var(--blue-text); }
+  .col-gru  .col-item { color: var(--green-text); }
+  .gate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gate-card { border-radius: var(--radius); padding: 10px 12px; }
+  .gate-forget { background: var(--coral-bg); }
+  .gate-input  { background: var(--blue-bg); }
+  .gate-cell   { background: var(--teal-bg); }
+  .gate-output { background: var(--green-bg); }
+  .gate-card .g-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .gate-forget .g-title { color: var(--coral-dark); }
+  .gate-input  .g-title { color: var(--blue-dark); }
+  .gate-cell   .g-title { color: var(--teal-dark); }
+  .gate-output .g-title { color: var(--green-dark); }
+  .gate-card .g-body { font-size: 12px; line-height: 1.6; }
+  .gate-forget .g-body { color: var(--coral-text); }
+  .gate-input  .g-body { color: var(--blue-text); }
+  .gate-cell   .g-body { color: var(--teal-text); }
+  .gate-output .g-body { color: var(--green-text); }
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pros { background: var(--green-bg); border-radius: var(--radius); padding: 10px 12px; }
+  .cons { background: var(--red-bg);   border-radius: var(--radius); padding: 10px 12px; }
+  .pros .pc-title { font-size: 13px; font-weight: 500; color: var(--green-dark); margin-bottom: 4px; }
+  .cons .pc-title { font-size: 13px; font-weight: 500; color: var(--red-dark);   margin-bottom: 4px; }
+  .pros .pc-item { font-size: 12px; color: var(--green-text); margin-bottom: 3px; }
+  .cons .pc-item { font-size: 12px; color: var(--red-text);   margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<h1>RNN 핵심 정리 노트</h1>
+<p class="subtitle">자연어처리 — Spring Semester 2026 · 동양미래대학교</p>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('seq',this)">1. Sequence Model</button>
+  <button class="tab-btn" onclick="switchTab('rnn',this)">2. RNN 기본</button>
+  <button class="tab-btn" onclick="switchTab('forward',this)">3. 순전파 계산</button>
+  <button class="tab-btn" onclick="switchTab('types',this)">4. 다양한 RNN</button>
+  <button class="tab-btn" onclick="switchTab('lstm',this)">5. LSTM</button>
+  <button class="tab-btn" onclick="switchTab('gru',this)">6. GRU</button>
+</div>
+
+<!-- 1. Sequence Model -->
+<div id="tab-seq" class="section active">
+  <div class="card">
+    <div class="card-title"><span class="badge badge-key">개념</span> Sequence Model이란?</div>
+    <p>순서가 있는 데이터(시계열, 텍스트, 오디오, 영상)를 처리하는 모델. 이전 시점 정보가 있어야 다음을 예측 가능.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> 4가지 구조 — 반드시 암기</div>
+    <div class="grid2">
+      <div class="mini-card"><div class="label">One-to-one</div><div class="val">일반 신경망 (Vanilla NN)<br>활용: 이진 분류</div></div>
+      <div class="mini-card"><div class="label">Many-to-one</div><div class="val">여러 입력 → 하나의 출력<br>활용: 감성 분석, 스팸 분류</div></div>
+      <div class="mini-card"><div class="label">One-to-many</div><div class="val">하나의 입력 → 여러 출력<br>활용: 이미지 캡셔닝</div></div>
+      <div class="mini-card"><div class="label">Many-to-many</div><div class="val">여러 입력 → 여러 출력<br>활용: 기계 번역(Seq2Seq), NER</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. RNN 기본 -->
+<div id="tab-rnn" class="section">
+  <div class="card">
+    <div class="card-title"><span class="badge badge-key">핵심</span> RNN vs 일반 신경망</div>
+    <p><strong>일반 신경망:</strong> 각 입력 독립 처리</p>
+    <div class="formula">o_t = f(x_t)</div>
+    <p><strong>RNN:</strong> 과거 hidden state 반영</p>
+    <div class="formula">o_t = f(x_t, h_{t-1})</div>
+    <div class="formula">h_t = tanh(h_{t-1}·W_hh + x_t·W_xh)   ← hidden state 업데이트</div>
+    <div class="formula">o_t = h_t · W_ho                        ← output 계산</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> 가중치 공유 (Weight Sharing)</div>
+    <p>모든 time step에서 W_hh, W_xh, W_ho를 <strong>공유</strong>. 같은 recurrent cell을 반복 재사용하기 때문. 파라미터 수가 입력 길이와 무관하게 일정.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> tanh를 쓰는 이유</div>
+    <p>ReLU는 출력값이 발산 → Normalization 필요. tanh는 출력을 [-1, 1]로 제한 → Gradient Vanishing 문제 완화.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> RNN 장단점</div>
+    <div class="pros-cons">
+      <div class="pros">
+        <div class="pc-title">장점</div>
+        <div class="pc-item">가변 길이 시퀀스 처리 가능</div>
+        <div class="pc-item">이론상 장기 의존성 학습</div>
+        <div class="pc-item">파라미터 수 일정 (weight sharing)</div>
+      </div>
+      <div class="cons">
+        <div class="pc-title">단점</div>
+        <div class="pc-item">병렬처리 불가 → 느린 학습</div>
+        <div class="pc-item">실제 장기 기억 어려움 (gradient 소실)</div>
+        <div class="pc-item">→ LSTM, GRU로 해결 / Transformer로 병렬화</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 순전파 계산 -->
+<div id="tab-forward" class="section">
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> "hello" 예측 전체 흐름</div>
+    <p>어휘: {'h':0, 'e':1, 'l':2, 'o':3} → one-hot 벡터 크기 4</p>
+    <div class="arrow-flow">
+      <div class="af-box">입력 h,e,l,l</div>
+      <div class="af-arrow">→</div>
+      <div class="af-box">One-Hot 인코딩</div>
+      <div class="af-arrow">→</div>
+      <div class="af-box">은닉층 tanh</div>
+      <div class="af-arrow">→</div>
+      <div class="af-box">출력층 W_ho</div>
+      <div class="af-arrow">→</div>
+      <div class="af-box">softmax</div>
+      <div class="af-arrow">→</div>
+      <div class="af-box">argmax → 예측</div>
+    </div>
+    <div class="divider"></div>
+    <div class="grid3">
+      <div class="mini-card"><div class="label">h</div><div class="val">[1, 0, 0, 0]</div></div>
+      <div class="mini-card"><div class="label">e</div><div class="val">[0, 1, 0, 0]</div></div>
+      <div class="mini-card"><div class="label">l</div><div class="val">[0, 0, 1, 0]</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-key">계산 단계</span> t=1 (h 입력)</div>
+    <div class="formula">h0 = (0, 0, 0)  ← 영행렬로 초기화 (initial hidden state)</div>
+    <div class="formula">h1 = tanh(h0·W_hh + x1·W_xh) = (0.2889, 0.2698, 0.6626)</div>
+    <div class="formula">O1 = h1·W_ho = (0.1866, 0.9446, 0.4106, 0.9213)</div>
+    <div class="formula">softmax(O1) = (0.1546, 0.3298, 0.1934, 0.3222) → argmax=1 → 'e'  ← 오답</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-key">계산 단계</span> t=2 (e 입력) — Weight Sharing 확인</div>
+    <p>W_xh, W_hh는 t=1과 동일한 값 재사용 (weight sharing)</p>
+    <div class="formula">h2 = tanh(h1·W_hh + x2·W_xh) = (0.8350, 0.8964, 0.8791)</div>
+    <div class="formula">O2 = h2·W_ho → softmax → argmax=3 → 'o'  ← 오답 (정답은 'l')</div>
+    <p>→ 초기 random weight는 틀린 예측. Backpropagation으로 W 업데이트 후 정확도 향상.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> BPTT vs Truncated BPTT</div>
+    <div class="grid2">
+      <div class="mini-card">
+        <div class="label">BPTT</div>
+        <div class="val">모든 시점의 loss 합 L에 대해 역전파. 시퀀스가 길수록 gradient 소실 심화.</div>
+      </div>
+      <div class="mini-card">
+        <div class="label">Truncated BPTT</div>
+        <div class="val">일정 길이로 잘라 역전파. hidden state는 계속 전달 → 맥락 유지. 메모리·연산 절약.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. 다양한 RNN -->
+<div id="tab-types" class="section">
+  <div class="card">
+    <div class="card-title"><span class="badge badge-key">구조</span> Multi-layer RNN (Stacked RNN)</div>
+    <p>RNN을 세로(계층 축)로 여러 층 쌓은 구조. 상위 층일수록 더 추상적인 특징 추출. 가로(시간 축)는 시퀀스 길이.</p>
+    <div style="display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin-top:8px;">
+      <div class="af-box">RNN layer 3 ← 가장 추상적인 표현</div>
+      <div class="af-arrow" style="margin-left:12px;">↑ hidden state 전달</div>
+      <div class="af-box">RNN layer 2</div>
+      <div class="af-arrow" style="margin-left:12px;">↑ hidden state 전달</div>
+      <div class="af-box">RNN layer 1 ← 입력 시퀀스</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> Bidirectional RNN</div>
+    <p>Forward(→)와 Backward(←) 두 방향으로 처리. 각 시점의 hidden state를 concatenate → 과거·미래 맥락 동시 반영.</p>
+    <div class="formula">h→_t = f1(h→_{t-1}, x_t)   t = 1,2,...,n  ← 과거 맥락</div>
+    <div class="formula">h←_t = f2(h←_{t+1}, x_t)   t = n,n-1,...,1  ← 미래 맥락</div>
+    <div class="formula">h_t = [h→_t ; h←_t]  ∈ R^{2h}  ← 차원이 2배</div>
+    <div class="divider"></div>
+    <p><strong>활용:</strong></p>
+    <div class="grid3">
+      <div class="mini-card"><div class="label">활용 1</div><div class="val">Sequence tagging (품사 태깅)</div></div>
+      <div class="mini-card"><div class="label">활용 2</div><div class="val">Text classification</div></div>
+      <div class="mini-card"><div class="label">활용 3</div><div class="val">Sentence encoding</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. LSTM -->
+<div id="tab-lstm" class="section">
+  <div class="card">
+    <div class="card-title"><span class="badge badge-key">핵심 아이디어</span> LSTM이 필요한 이유</div>
+    <p>Vanilla RNN은 <strong>Short-term memory</strong> 문제: 시퀀스가 길면 오래된 정보의 gradient가 소실되어 학습 불균형 발생.</p>
+    <p>LSTM은 <strong>Cell State(c_t)</strong>라는 별도의 장기 기억 통로를 추가. 덧셈(+) 연산으로 gradient를 멀리까지 전달.</p>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> 4가지 게이트 — 각각의 역할</div>
+    <div class="gate-grid">
+      <div class="gate-card gate-forget">
+        <div class="g-title">Forget Gate (f_t)</div>
+        <div class="g-body">
+          "무엇을 <strong>잊을</strong> 것인가?"<br>
+          f_t = σ(W_f·[h_{t-1}, x_t] + b_f)<br>
+          0 → 완전 망각, 1 → 완전 기억
+        </div>
+      </div>
+      <div class="gate-card gate-input">
+        <div class="g-title">Input Gate (i_t)</div>
+        <div class="g-body">
+          "무엇을 <strong>기억할</strong> 것인가?"<br>
+          i_t = σ(W_i·[h_{t-1}, x_t] + b_i)<br>
+          새 정보 중 저장할 비율 결정
+        </div>
+      </div>
+      <div class="gate-card gate-cell">
+        <div class="g-title">Cell Candidate (g_t)</div>
+        <div class="g-body">
+          "무엇을 <strong>새롭게 저장</strong>할 것인가?"<br>
+          g_t = tanh(W_C·[h_{t-1}, x_t] + b_C)<br>
+          과거+현재 조합 → 후보 정보
+        </div>
+      </div>
+      <div class="gate-card gate-output">
+        <div class="g-title">Output Gate (o_t)</div>
+        <div class="g-body">
+          "무엇을 <strong>내보낼</strong> 것인가?"<br>
+          o_t = σ(W_o·[h_{t-1}, x_t] + b_o)<br>
+          Cell State 중 출력할 부분 선택
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> Cell State & Hidden State 업데이트 수식</div>
+    <div class="formula">C_t = f_t ⊙ C_{t-1}  +  i_t ⊙ g_t    ← 덧셈 연산 → gradient 소실 완화</div>
+    <div class="formula">h_t = o_t ⊙ tanh(C_t)                  ← 최종 hidden state (출력)</div>
+    <p>덧셈(+) 연산으로 Cell State를 통해 gradient가 전 시퀀스에 걸쳐 안정적으로 흐름 → <strong>Uninterrupted gradient flow</strong></p>
+  </div>
+</div>
+
+<!-- 6. GRU -->
+<div id="tab-gru" class="section">
+  <div class="card">
+    <div class="card-title"><span class="badge badge-key">핵심</span> GRU = LSTM의 경량화 버전</div>
+    <p>LSTM의 복잡성·연산 효율 문제를 해결하기 위해 구조 단순화.</p>
+    <div class="compare-grid">
+      <div class="compare-col col-lstm">
+        <div class="col-title">LSTM</div>
+        <div class="col-item">게이트 3개: Forget / Input / Output</div>
+        <div class="col-item">상태 2개: Cell State(c_t) + Hidden(h_t)</div>
+        <div class="col-item">파라미터 많음, 표현력 높음</div>
+      </div>
+      <div class="compare-col col-gru">
+        <div class="col-title">GRU</div>
+        <div class="col-item">게이트 2개: Update / Reset</div>
+        <div class="col-item">상태 1개: Hidden(h_t)만 사용</div>
+        <div class="col-item">파라미터 적음, 속도 빠름</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-exam">시험 포인트</span> GRU 수식</div>
+    <div class="formula">r_t = σ(W_r·h_{t-1} + U_r·x_t + b_r)            ← Reset gate</div>
+    <div class="formula">z_t = σ(W_z·h_{t-1} + U_z·x_t + b_z)            ← Update gate</div>
+    <div class="formula">h̃_t = tanh(W·(r_t ⊙ h_{t-1}) + U·x_t + b)     ← 후보 hidden state</div>
+    <div class="formula">h_t = (1 − z_t) ⊙ h_{t-1}  +  z_t ⊙ h̃_t       ← 최종 hidden state</div>
+    <div class="divider"></div>
+    <div class="grid2">
+      <div class="mini-card">
+        <div class="label">Reset gate (r_t)</div>
+        <div class="val">과거 정보를 얼마나 무시할지 결정. r=0이면 과거 완전 무시, r=1이면 그대로 반영.</div>
+      </div>
+      <div class="mini-card">
+        <div class="label">Update gate (z_t)</div>
+        <div class="val">LSTM의 Forget gate + Input gate를 합친 역할. 과거 vs 새 정보의 비율을 결정.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
